@@ -81,7 +81,7 @@ namespace BigQueryProvider
             CheckDisposed();
             cancellationToken.ThrowIfCancellationRequested();
             if (IsOpened)
-                throw new InvalidOperationException("Connection allready open");
+                throw new InvalidOperationException("Connection already open");
             try
             {
                 await InitializeServiceAsync(cancellationToken).ConfigureAwait(false);
