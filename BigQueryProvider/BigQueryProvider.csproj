@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>BigQueryProvider</AssemblyName>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Configurations>Debug;Release</Configurations>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <LangVersion>8</LangVersion>
+  </PropertyGroup>
+  
+  <PropertyGroup Label="Nuspec">
+    <Title>BigQueryProvider</Title>
+    <Authors>Jayden</Authors>
+    <Description>BigQuery Dotnet Driver</Description>
+    <Version>1.1.0</Version>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Google.Apis.Bigquery.v2" Version="1.42.0.1777" />
+  </ItemGroup>
+
+  <Import Project="Nuget.targets" Condition="'$(Configuration)' == 'Publish'" />
+</Project>

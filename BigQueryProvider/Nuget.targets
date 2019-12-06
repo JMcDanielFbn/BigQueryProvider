@@ -1,0 +1,13 @@
+﻿<Project>
+    <PropertyGroup>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    </PropertyGroup>
+
+    <Target Name="Nuget" AfterTargets="Pack">
+        <PropertyGroup>
+            <NugetSource>http://pieget.chequer.io/v3/index.json</NugetSource>
+        </PropertyGroup>
+
+        <Exec Command="dotnet nuget push &quot;$(PackageOutputPath)$(AssemblyName).$(Version).nupkg&quot; -s $(NugetSource) -k $(ApiKey)"/>
+    </Target>
+</Project>
