@@ -15,7 +15,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="Google.Apis.Bigquery.v2" Version="1.34.0.1239" />
+    <PackageReference Include="Google.Apis.Bigquery.v2" Version="1.42.0.1777" />
   </ItemGroup>
 
   <Import Project="Nuget.targets" Condition="'$(Configuration)' == 'Publish'" />
