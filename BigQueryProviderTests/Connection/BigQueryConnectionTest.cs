@@ -3,7 +3,7 @@ using BigQueryProvider;
 using BigQueryProviderTests.Model;
 using NUnit.Framework;
 
-namespace BigQueryProviderTests
+namespace BigQueryProviderTests.Connection
 {
     [TestFixture]
     public class BigQueryConnectionTest : BigQueryProviderTestBase
