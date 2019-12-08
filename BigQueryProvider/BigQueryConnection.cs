@@ -281,8 +281,14 @@ namespace BigQueryProvider
 
             set
             {
+                if (!connectionStringBuilder.ContainsKey("DataSetId"))
+                {
+                    connectionStringBuilder.Add("DataSetId", string.Empty);
+                }
+
                 if ((string) connectionStringBuilder["DataSetId"] == value)
                     return;
+
                 connectionStringBuilder["DataSetId"] = value;
                 ConnectionString = connectionStringBuilder.ConnectionString;
             }
