@@ -277,7 +277,8 @@ namespace BigQueryProvider
 
         internal string DataSetId
         {
-            get => (string) connectionStringBuilder["DataSetId"];
+            get => connectionStringBuilder.ContainsKey("DataSetId")
+                ? (string) connectionStringBuilder ["DataSetId"] : null;
 
             set
             {
