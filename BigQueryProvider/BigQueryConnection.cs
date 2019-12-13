@@ -29,26 +29,27 @@ using Google.Apis.Bigquery.v2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Apis.Http;
 using Google.Apis.Services;
+using Serilog;
 
 namespace BigQueryProvider
 {
     /// <summary>
     /// Represents a connection to BigQuery.
     /// </summary>
-    public class BigQueryConnection : DbConnection, ICloneable
+    public sealed class BigQueryConnection : DbConnection, ICloneable
     {
-        const string applicationName = "BigQueryProvider ADO.NET Provider";
+        private const string ApplicationName = "BigQueryProvider ADO.NET Provider";
 
-        readonly DbConnectionStringBuilder connectionStringBuilder = new DbConnectionStringBuilder();
-        readonly string[] scopes = {BigqueryService.Scope.Bigquery};
+        private readonly DbConnectionStringBuilder _connectionStringBuilder = new DbConnectionStringBuilder();
+        private readonly string[] _scopes = {BigqueryService.Scope.Bigquery};
 
-        ConnectionState state;
-        bool disposed;
+        private ConnectionState _state;
+        private bool _disposed;
 
         /// <summary>
         /// Initializes a new instance of the BigQueryConnection class with default settings.
         /// </summary>
-        public BigQueryConnection()
+        public BigQueryConnection() : this(default)
         {
         }
 
@@ -56,9 +57,9 @@ namespace BigQueryProvider
         /// Initializes a new instance of the BigQueryConnection class with the specified connection string.
         /// </summary>
         /// <param name="connectionString">A System.String specifying a connection string.</param>
-        public BigQueryConnection(string connectionString)
+        public BigQueryConnection(string? connectionString)
         {
-            ConnectionString = connectionString;
+            ConnectionString = connectionString ?? "";
         }
 
         /// <summary>
@@ -88,7 +89,7 @@ namespace BigQueryProvider
             }
             catch (GoogleApiException e)
             {
-                state = ConnectionState.Broken;
+                _state = ConnectionState.Broken;
                 throw e.Wrap();
             }
         }
@@ -118,7 +119,24 @@ namespace BigQueryProvider
             CheckDisposed();
             if (!IsOpened)
                 return;
-            state = ConnectionState.Closed;
+            _state = ConnectionState.Closed;
+        }
+
+        public string[] GetProjectNames()
+        {
+            CheckDisposed();
+            CheckOpen();
+            ProjectList projectList;
+            try
+            {
+                projectList = Service.Projects.List().Execute();
+            }
+            catch (GoogleApiException e)
+            {
+                throw e.Wrap();
+            }
+
+            return projectList.Projects.Select(p => p.ProjectReference.ProjectId).ToArray();
         }
 
         /// <summary>
@@ -183,10 +201,10 @@ namespace BigQueryProvider
         /// <value>
         /// a System.String value specifying a connection string.
         /// </value>
-        public override string ConnectionString
+        public sealed override string ConnectionString
         {
-            get => connectionStringBuilder.ConnectionString;
-            set => connectionStringBuilder.ConnectionString = value;
+            get => _connectionStringBuilder.ConnectionString;
+            set => _connectionStringBuilder.ConnectionString = value;
         }
 
         /// <summary>
@@ -244,7 +262,7 @@ namespace BigQueryProvider
         /// <value>
         /// A ConnectionState enumeration value.
         /// </value>
-        public override ConnectionState State => state;
+        public override ConnectionState State => _state;
 
         protected override DbCommand CreateDbCommand()
         {
@@ -259,7 +277,7 @@ namespace BigQueryProvider
 
         protected override void Dispose(bool disposing)
         {
-            if (disposed)
+            if (_disposed)
                 return;
             if (disposing)
             {
@@ -267,55 +285,67 @@ namespace BigQueryProvider
             }
 
             Close();
-            disposed = true;
+            _disposed = true;
             base.Dispose(disposing);
         }
 
         internal BigqueryService Service { get; private set; }
-
-        internal string ProjectId => (string) connectionStringBuilder["ProjectId"];
-
-        internal string DataSetId
+        
+        public string ProjectId
         {
-            get => connectionStringBuilder.ContainsKey("DataSetId")
-                ? (string) connectionStringBuilder ["DataSetId"] : null;
+            get => _connectionStringBuilder.ContainsKey("ProjectId")
+                ? (string) _connectionStringBuilder["ProjectId"]
+                : null;
 
-            set
+            private set
             {
-                if (!connectionStringBuilder.ContainsKey("DataSetId"))
+                _connectionStringBuilder["ProjectId"] = value;
+                ConnectionString = _connectionStringBuilder.ConnectionString;
+            }
+        }
+
+        public string DataSetId
+        {
+            get => _connectionStringBuilder.ContainsKey("DataSetId")
+                ? (string) _connectionStringBuilder["DataSetId"]
+                : null;
+
+            private set
+            {
+                if (!_connectionStringBuilder.ContainsKey("DataSetId"))
                 {
-                    connectionStringBuilder.Add("DataSetId", string.Empty);
+                    _connectionStringBuilder.Add("DataSetId", string.Empty);
                 }
 
-                if ((string) connectionStringBuilder["DataSetId"] == value)
+                if ((string) _connectionStringBuilder["DataSetId"] == value)
                     return;
 
-                connectionStringBuilder["DataSetId"] = value;
-                ConnectionString = connectionStringBuilder.ConnectionString;
+                _connectionStringBuilder["DataSetId"] = value;
+                ConnectionString = _connectionStringBuilder.ConnectionString;
             }
         }
 
         string OAuthRefreshToken
         {
-            get => connectionStringBuilder.ContainsKey("OAuthRefreshToken")
-                ? (string) connectionStringBuilder["OAuthRefreshToken"]
+            get => _connectionStringBuilder.ContainsKey("OAuthRefreshToken")
+                ? (string) _connectionStringBuilder["OAuthRefreshToken"]
                 : null;
             set
             {
-                connectionStringBuilder["OAuthRefreshToken"] = value;
-                ConnectionString = connectionStringBuilder.ConnectionString;
+                _connectionStringBuilder["OAuthRefreshToken"] = value;
+                ConnectionString = _connectionStringBuilder.ConnectionString;
             }
         }
 
         string OAuthAccessToken
         {
-            get => connectionStringBuilder.ContainsKey("OAuthAccessToken")
-                ? (string) connectionStringBuilder["OAuthAccessToken"]
+            get => _connectionStringBuilder.ContainsKey("OAuthAccessToken")
+                ? (string) _connectionStringBuilder["OAuthAccessToken"]
                 : null;
             set
             {
-                connectionStringBuilder["OAuthAccessToken"] = value;
-                ConnectionString = connectionStringBuilder.ConnectionString;
+                _connectionStringBuilder["OAuthAccessToken"] = value;
+                ConnectionString = _connectionStringBuilder.ConnectionString;
             }
         }
 
@@ -323,30 +353,30 @@ namespace BigQueryProvider
         {
             get
             {
-                if (connectionStringBuilder.ContainsKey("StandardSql") &&
-                    bool.TryParse((string) connectionStringBuilder["StandardSql"], out bool result)) return result;
+                if (_connectionStringBuilder.ContainsKey("StandardSql") &&
+                    bool.TryParse((string) _connectionStringBuilder["StandardSql"], out var result)) return result;
 
                 return false;
             }
         }
 
-        string OAuthClientId => (string) connectionStringBuilder["OAuthClientId"];
+        string OAuthClientId => (string) _connectionStringBuilder["OAuthClientId"];
 
-        string OAuthClientSecret => (string) connectionStringBuilder["OAuthClientSecret"];
+        string OAuthClientSecret => (string) _connectionStringBuilder["OAuthClientSecret"];
 
-        string ServiceAccountEmail => connectionStringBuilder.ContainsKey("ServiceAccountEmail")
-            ? (string) connectionStringBuilder["ServiceAccountEmail"]
+        string ServiceAccountEmail => _connectionStringBuilder.ContainsKey("ServiceAccountEmail")
+            ? (string) _connectionStringBuilder["ServiceAccountEmail"]
             : string.Empty;
 
-        string PrivateKeyFileName => connectionStringBuilder.ContainsKey("PrivateKeyFileName")
-            ? (string) connectionStringBuilder["PrivateKeyFileName"]
+        string PrivateKeyFileName => _connectionStringBuilder.ContainsKey("PrivateKeyFileName")
+            ? (string) _connectionStringBuilder["PrivateKeyFileName"]
             : string.Empty;
 
-        string ServiceAccount => connectionStringBuilder.ContainsKey("ServiceAccount")
-            ? (string) connectionStringBuilder["ServiceAccount"]
+        string ServiceAccount => _connectionStringBuilder.ContainsKey("ServiceAccount")
+            ? (string) _connectionStringBuilder["ServiceAccount"]
             : string.Empty;
 
-        bool IsOpened => state == ConnectionState.Open;
+        bool IsOpened => _state == ConnectionState.Open;
 
         void CheckOpen()
         {
@@ -356,28 +386,36 @@ namespace BigQueryProvider
 
         void CheckDisposed()
         {
-            if (disposed)
+            if (_disposed)
             {
                 throw new ObjectDisposedException(ToString());
             }
         }
 
-        async Task InitializeServiceAsync(CancellationToken cancellationToken)
+        private async Task InitializeServiceAsync(CancellationToken cancellationToken)
         {
             CheckDisposed();
             cancellationToken.ThrowIfCancellationRequested();
-            state = ConnectionState.Connecting;
+            _state = ConnectionState.Connecting;
             Service = await CreateServiceAsync(cancellationToken).ConfigureAwait(false);
-            JobsResource.ListRequest listRequest = Service.Jobs.List(ProjectId);
+            var listRequest = Service.Jobs.List(ProjectId);
             await listRequest.ExecuteAsync(cancellationToken).ConfigureAwait(false);
-            state = ConnectionState.Open;
+            _state = ConnectionState.Open;
+        }
+
+        /// <summary>
+        /// Whether to authenticate based on user account.
+        /// </summary>
+        private bool IsUserAccountAuth()
+        {
+            return string.IsNullOrEmpty(PrivateKeyFileName) && string.IsNullOrEmpty(ServiceAccount);
         }
 
         async Task<BigqueryService> CreateServiceAsync(CancellationToken cancellationToken)
         {
             IConfigurableHttpClientInitializer credential;
             cancellationToken.ThrowIfCancellationRequested();
-            if (string.IsNullOrEmpty(PrivateKeyFileName) && string.IsNullOrEmpty(ServiceAccount))
+            if (IsUserAccountAuth())
             {
                 var dataStore = new DataStore(OAuthRefreshToken, OAuthAccessToken);
 
@@ -388,43 +426,51 @@ namespace BigQueryProvider
                 };
 
                 credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(clientSecrets,
-                    scopes,
+                    _scopes,
                     "user",
                     cancellationToken,
                     dataStore).ConfigureAwait(false);
 
                 OAuthRefreshToken = dataStore.RefreshToken;
                 OAuthAccessToken = dataStore.AccessToken;
-            }
-            else if (string.IsNullOrEmpty(ServiceAccount))
-            {
-                switch (Path.GetExtension(PrivateKeyFileName).ToLower())
-                {
-                    case ".p12":
-                        X509Certificate2 certificate = new X509Certificate2(PrivateKeyFileName, "notasecret",
-                            X509KeyStorageFlags.Exportable);
-                        credential = new ServiceAccountCredential(
-                            new ServiceAccountCredential.Initializer(ServiceAccountEmail)
-                            {
-                                Scopes = scopes
-                            }.FromCertificate(certificate));
-                        break;
-                    case ".json":
-                        credential = GoogleCredential.FromFile(PrivateKeyFileName).CreateScoped(scopes);
-                        break;
-                    default:
-                        throw new BigQueryException($"Supplied key file '{PrivateKeyFileName}' is not supported.");
-                }
+                Log.Verbose("Authorized with service account");
             }
             else
             {
-                credential = GoogleCredential.FromJson(ServiceAccount).CreateScoped(scopes);
+                if (string.IsNullOrEmpty(ServiceAccount))
+                {
+                    switch (Path.GetExtension(PrivateKeyFileName).ToLower())
+                    {
+                        case ".p12":
+                            X509Certificate2 certificate = new X509Certificate2(PrivateKeyFileName, "notasecret",
+                                X509KeyStorageFlags.Exportable);
+                            credential = new ServiceAccountCredential(
+                                new ServiceAccountCredential.Initializer(ServiceAccountEmail)
+                                {
+                                    Scopes = _scopes
+                                }.FromCertificate(certificate));
+                            break;
+                        case ".json":
+                            credential = GoogleCredential.FromFile(PrivateKeyFileName).CreateScoped(_scopes);
+                            break;
+                        default:
+                            throw new BigQueryException($"Supplied key file '{PrivateKeyFileName}' is not supported.");
+                    }
+                }
+                else
+                {
+                    credential = GoogleCredential.FromJson(ServiceAccount).CreateScoped(_scopes);
+                }
+
+                Log.Verbose("Authorized with service account");
             }
+
+            Log.Debug("The project id for this connections is: " + ProjectId);
 
             return new BigqueryService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
-                ApplicationName = applicationName
+                ApplicationName = ApplicationName
             });
         }
 
