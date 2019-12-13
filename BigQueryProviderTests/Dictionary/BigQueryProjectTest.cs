@@ -5,10 +5,10 @@ using NUnit.Framework;
 namespace BigQueryProviderTests.Dictionary
 {
     [TestFixture]
-    public class BigQueryDatasetTest : BigQueryProviderTestBase
+    public class BigQueryProjectTest : BigQueryProviderTestBase
     {
         [TestCase]
-        public void GetDataSetListSuccessTest()
+        public void GetProjectListSuccessTest()
         {
             // given
             var connectionString = new BigQueryConnectionStringBuilder().ToString();
@@ -16,10 +16,10 @@ namespace BigQueryProviderTests.Dictionary
             connection.Open();
 
             // when
-            string[] dataSetNames = connection.GetDataSetNames();
+            string[] projectNames = connection.GetProjectNames();
 
             // then
-            Assert.IsNotEmpty(dataSetNames);
+            Assert.IsNotEmpty(projectNames);
         }
     }
 }
