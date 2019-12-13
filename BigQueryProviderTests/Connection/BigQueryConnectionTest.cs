@@ -1,4 +1,21 @@
+/*
+   Copyright 2019 Jayden Lee.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 using System.Data;
+using System.Threading.Tasks;
 using BigQueryProvider;
 using BigQueryProviderTests.Model;
 using NUnit.Framework;
@@ -9,7 +26,7 @@ namespace BigQueryProviderTests.Connection
     public class BigQueryConnectionTest : BigQueryProviderTestBase
     {
         [TestCase]
-        public void openConnection_SuccessTest()
+        public void OpenConnectionSyncSuccessTest()
         {
             // given
             var connectionStringBuilder = new BigQueryConnectionStringBuilder();
@@ -17,6 +34,20 @@ namespace BigQueryProviderTests.Connection
             // when
             using BigQueryConnection connection = new BigQueryConnection(connectionStringBuilder.ToString());
             connection.Open();
+
+            // then
+            Assert.AreEqual(ConnectionState.Open, connection.State);
+        }
+        
+        [TestCase]
+        public async Task OpenConnectionAsyncSuccessTest()
+        {
+            // given
+            var connectionStringBuilder = new BigQueryConnectionStringBuilder();
+
+            // when
+            await using BigQueryConnection connection = new BigQueryConnection(connectionStringBuilder.ToString());
+            await connection.OpenAsync();
 
             // then
             Assert.AreEqual(ConnectionState.Open, connection.State);
