@@ -21,7 +21,7 @@ namespace BigQueryProvider {
     /// <summary>
     /// Automatically generates commands to be executed against a BigQuery data source.
     /// </summary>
-    public class BigQueryCommandBuilder : DbCommandBuilder {
+    public sealed class BigQueryCommandBuilder : DbCommandBuilder {
         /// <summary>
         /// Initializes a new instance of the BigQueryCommandBuilder class with default settings.
         /// </summary>
@@ -112,10 +112,10 @@ namespace BigQueryProvider {
             return unquotedIdentifier;
         }
 
-        protected override DataTable GetSchemaTable(DbCommand sourceCommand) {
-            using(IDataReader dataReader = sourceCommand.ExecuteReader(CommandBehavior.SchemaOnly)) {
-                return dataReader.GetSchemaTable();
-            }
+        protected override DataTable GetSchemaTable(DbCommand sourceCommand)
+        {
+            using IDataReader dataReader = sourceCommand.ExecuteReader(CommandBehavior.SchemaOnly);
+            return dataReader.GetSchemaTable();
         }
 
         protected override void ApplyParameterInfo(DbParameter parameter, DataRow row, StatementType statementType, bool whereClause) {

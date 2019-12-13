@@ -40,6 +40,9 @@ namespace BigQueryProvider
     {
         private const string ApplicationName = "BigQueryProvider ADO.NET Provider";
 
+        private const string P12FileExtension = ".p12";
+        private const string JsonFileExtension = ".json";
+
         private readonly DbConnectionStringBuilder _connectionStringBuilder = new DbConnectionStringBuilder();
         private readonly string[] _scopes = {BigqueryService.Scope.Bigquery};
 
@@ -290,7 +293,7 @@ namespace BigQueryProvider
         }
 
         internal BigqueryService Service { get; private set; }
-        
+
         public string ProjectId
         {
             get => _connectionStringBuilder.ContainsKey("ProjectId")
@@ -441,7 +444,7 @@ namespace BigQueryProvider
                 {
                     switch (Path.GetExtension(PrivateKeyFileName).ToLower())
                     {
-                        case ".p12":
+                        case P12FileExtension:
                             X509Certificate2 certificate = new X509Certificate2(PrivateKeyFileName, "notasecret",
                                 X509KeyStorageFlags.Exportable);
                             credential = new ServiceAccountCredential(
@@ -450,7 +453,7 @@ namespace BigQueryProvider
                                     Scopes = _scopes
                                 }.FromCertificate(certificate));
                             break;
-                        case ".json":
+                        case JsonFileExtension:
                             credential = GoogleCredential.FromFile(PrivateKeyFileName).CreateScoped(_scopes);
                             break;
                         default:

@@ -96,7 +96,6 @@ namespace BigQueryProvider
             return parameter.Value.ToInvariantString(format);
         }
 
-
         static string EscapeString(string invariantString)
         {
             return invariantString
@@ -119,26 +118,26 @@ namespace BigQueryProvider
 
         #endregion
 
-        const char parameterPrefix = '@';
+        const char ParameterPrefix = '@';
 
-        readonly BigQueryCommand bigQueryCommand;
-        readonly BigqueryService bigQueryService;
-        readonly CommandBehavior behavior;
-        IEnumerator<TableRow> enumerator;
-        IEnumerator<TableList.TablesData> tables;
-        IList<TableRow> rows;
-        TableSchema schema;
-        int fieldsCount;
-        bool disposed;
+        private readonly BigQueryCommand _bigQueryCommand;
+        private readonly BigqueryService _bigQueryService;
+        private readonly CommandBehavior _behavior;
+        private IEnumerator<TableRow> _enumerator;
+        private IEnumerator<TableList.TablesData> _tables;
+        private IList<TableRow> _rows;
+        private TableSchema _schema;
+        private int _fieldsCount;
+        private bool _disposed;
 
         internal BigQueryDataReader(CommandBehavior behavior, BigQueryCommand command, BigqueryService service)
         {
-            this.behavior = behavior;
-            bigQueryService = service;
-            bigQueryCommand = command;
+            _behavior = behavior;
+            _bigQueryService = service;
+            _bigQueryCommand = command;
         }
 
-        bool IsStandardSql => bigQueryCommand.Connection.IsStandardSql;
+        bool IsStandardSql => _bigQueryCommand.Connection.IsStandardSql;
 
         /// <summary>
         /// Closes the current BigQueryDataReader.
@@ -167,11 +166,11 @@ namespace BigQueryProvider
         public override DataTable GetSchemaTable()
         {
             DisposeCheck();
-            if (tables.Current == null)
+            if (_tables.Current == null)
                 return null;
-            string projectId = bigQueryCommand.Connection.ProjectId;
-            string dataSetId = bigQueryCommand.Connection.DataSetId;
-            string tableId = tables.Current.TableReference.TableId;
+            string projectId = _bigQueryCommand.Connection.ProjectId;
+            string dataSetId = _bigQueryCommand.Connection.DataSetId;
+            string tableId = _tables.Current.TableReference.TableId;
 
             DataTable dataTable = new DataTable {TableName = tableId};
             dataTable.Columns.Add("ColumnName", typeof(string));
@@ -179,7 +178,7 @@ namespace BigQueryProvider
 
             try
             {
-                Table tableSchema = bigQueryService.Tables.Get(projectId, dataSetId, tableId).Execute();
+                Table tableSchema = _bigQueryService.Tables.Get(projectId, dataSetId, tableId).Execute();
                 foreach (var tableFieldSchema in tableSchema.Schema.Fields)
                 {
                     dataTable.Rows.Add(tableFieldSchema.Name, BigQueryTypeConverter.ToType(tableFieldSchema.Type));
@@ -200,9 +199,9 @@ namespace BigQueryProvider
         public override bool NextResult()
         {
             DisposeCheck();
-            if (behavior == CommandBehavior.SchemaOnly)
+            if (_behavior == CommandBehavior.SchemaOnly)
             {
-                return tables.MoveNext();
+                return _tables.MoveNext();
             }
 
             return false;
@@ -215,7 +214,7 @@ namespace BigQueryProvider
         public override bool Read()
         {
             DisposeCheck();
-            return enumerator.MoveNext();
+            return _enumerator.MoveNext();
         }
 
         /// <summary>
@@ -232,7 +231,7 @@ namespace BigQueryProvider
         /// <value>
         /// true, if the current BigQueryDataReader is closed; otherwise false.
         /// </value>
-        public override bool IsClosed => disposed;
+        public override bool IsClosed => _disposed;
 
         /// <summary>
         /// Returns the total count of data records affected by executing a command. 
@@ -406,7 +405,7 @@ namespace BigQueryProvider
         {
             DisposeCheck();
             RangeCheck(ordinal);
-            return schema.Fields[ordinal].Name;
+            return _schema.Fields[ordinal].Name;
         }
 
         /// <summary>
@@ -427,7 +426,7 @@ namespace BigQueryProvider
         public override int GetValues(object[] values)
         {
             DisposeCheck();
-            for (int i = 0; i < fieldsCount; i++)
+            for (int i = 0; i < _fieldsCount; i++)
             {
                 values[i] = ChangeValueType(GetValue(i), i);
             }
@@ -466,7 +465,7 @@ namespace BigQueryProvider
             get
             {
                 DisposeCheck();
-                return fieldsCount;
+                return _fieldsCount;
             }
         }
 
@@ -510,7 +509,7 @@ namespace BigQueryProvider
             get
             {
                 DisposeCheck();
-                return rows != null && rows.Count > 0;
+                return _rows != null && _rows.Count > 0;
             }
         }
 
@@ -522,9 +521,9 @@ namespace BigQueryProvider
         public override int GetOrdinal(string name)
         {
             DisposeCheck();
-            for (int i = 0; i < schema.Fields.Count; i++)
+            for (int i = 0; i < _schema.Fields.Count; i++)
             {
-                if (schema.Fields[i].Name == name)
+                if (_schema.Fields[i].Name == name)
                     return i;
             }
 
@@ -561,7 +560,7 @@ namespace BigQueryProvider
         {
             DisposeCheck();
             RangeCheck(ordinal);
-            string type = schema.Fields[ordinal].Type;
+            string type = _schema.Fields[ordinal].Type;
             Type fieldType = BigQueryTypeConverter.ToType(type);
             if (fieldType != null)
                 return fieldType;
@@ -587,7 +586,7 @@ namespace BigQueryProvider
         {
             DisposeCheck();
             RangeCheck(ordinal);
-            return enumerator.Current.F[ordinal].V;
+            return _enumerator.Current.F[ordinal].V;
         }
 
         /// <summary>
@@ -597,7 +596,7 @@ namespace BigQueryProvider
         public override IEnumerator GetEnumerator()
         {
             DisposeCheck();
-            return enumerator;
+            return _enumerator;
         }
 
         internal async Task InitializeAsync(CancellationToken cancellationToken)
@@ -605,18 +604,18 @@ namespace BigQueryProvider
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                if (behavior == CommandBehavior.SchemaOnly)
+                if (_behavior == CommandBehavior.SchemaOnly)
                 {
-                    TableList tableList = await bigQueryService.Tables
-                        .List(bigQueryCommand.Connection.ProjectId, bigQueryCommand.Connection.DataSetId)
+                    TableList tableList = await _bigQueryService.Tables
+                        .List(_bigQueryCommand.Connection.ProjectId, _bigQueryCommand.Connection.DataSetId)
                         .ExecuteAsync(cancellationToken).ConfigureAwait(false);
-                    tables = tableList.Tables.GetEnumerator();
+                    _tables = tableList.Tables.GetEnumerator();
                 }
                 else
                 {
-                    ((BigQueryParameterCollection) bigQueryCommand.Parameters).Validate();
-                    JobsResource.QueryRequest request = CreateRequest();
-                    QueryResponse queryResponse = await request.ExecuteAsync(cancellationToken).ConfigureAwait(false);
+                    ((BigQueryParameterCollection) _bigQueryCommand.Parameters).Validate();
+                    var request = CreateRequest();
+                    var queryResponse = await request.ExecuteAsync(cancellationToken).ConfigureAwait(false);
                     ProcessQueryResponse(queryResponse);
                 }
             }
@@ -628,38 +627,39 @@ namespace BigQueryProvider
 
         protected override void Dispose(bool disposing)
         {
-            if (disposed)
+            if (_disposed)
                 return;
             if (disposing)
             {
-                enumerator?.Dispose();
+                _enumerator?.Dispose();
             }
 
-            disposed = true;
+            _disposed = true;
             base.Dispose(disposing);
         }
 
         JobsResource.QueryRequest CreateRequest()
         {
-            BigQueryParameterCollection collection = (BigQueryParameterCollection) bigQueryCommand.Parameters;
+            BigQueryParameterCollection collection = (BigQueryParameterCollection) _bigQueryCommand.Parameters;
             if (!IsStandardSql)
             {
                 foreach (BigQueryParameter parameter in collection)
                 {
-                    bigQueryCommand.CommandText = bigQueryCommand.CommandText.Replace(
-                        parameterPrefix + parameter.ParameterName.TrimStart(parameterPrefix),
+                    _bigQueryCommand.CommandText = _bigQueryCommand.CommandText.Replace(
+                        ParameterPrefix + parameter.ParameterName.TrimStart(ParameterPrefix),
                         ConvertToStringForLegacySql(parameter));
                 }
             }
 
-            QueryRequest queryRequest = new QueryRequest
+            var queryRequest = new QueryRequest
             {
-                Query = PrepareCommandText(bigQueryCommand),
-                TimeoutMs = bigQueryCommand.CommandTimeout != 0
-                    ? (int) TimeSpan.FromSeconds(bigQueryCommand.CommandTimeout).TotalMilliseconds
+                Query = PrepareCommandText(_bigQueryCommand),
+                TimeoutMs = _bigQueryCommand.CommandTimeout != 0
+                    ? (int) TimeSpan.FromSeconds(_bigQueryCommand.CommandTimeout).TotalMilliseconds
                     : int.MaxValue,
                 UseLegacySql = !IsStandardSql
             };
+
             if (IsStandardSql)
             {
                 queryRequest.QueryParameters = new List<QueryParameter>();
@@ -678,8 +678,7 @@ namespace BigQueryProvider
                 }
             }
 
-            JobsResource.QueryRequest request =
-                bigQueryService.Jobs.Query(queryRequest, bigQueryCommand.Connection.ProjectId);
+            var request = _bigQueryService.Jobs.Query(queryRequest, _bigQueryCommand.Connection.ProjectId);
             return request;
         }
 
@@ -690,17 +689,17 @@ namespace BigQueryProvider
                 throw new BigQueryException("Timeout is reached");
             }
 
-            rows = queryResponse.Rows;
-            schema = queryResponse.Schema;
-            fieldsCount = schema.Fields.Count;
-            if (rows != null)
+            _rows = queryResponse.Rows;
+            _schema = queryResponse.Schema;
+            _fieldsCount = _schema.Fields.Count;
+            if (_rows != null)
             {
-                enumerator = rows.GetEnumerator();
+                _enumerator = _rows.GetEnumerator();
             }
             else
             {
-                rows = new TableRow[] { };
-                enumerator = rows.GetEnumerator();
+                _rows = new TableRow[] { };
+                _enumerator = _rows.GetEnumerator();
             }
         }
 
@@ -714,13 +713,13 @@ namespace BigQueryProvider
             if (value == null)
                 return null;
 
-            BigQueryDbType bigQueryType = BigQueryTypeConverter.ToBigQueryDbType(schema.Fields[ordinal].Type);
+            BigQueryDbType bigQueryType = BigQueryTypeConverter.ToBigQueryDbType(_schema.Fields[ordinal].Type);
             if (bigQueryType == BigQueryDbType.Timestamp)
             {
                 return UnixTimeStampToDateTime(value);
             }
 
-            return Convert.ChangeType(value, BigQueryTypeConverter.ToType(schema.Fields[ordinal].Type),
+            return Convert.ChangeType(value, BigQueryTypeConverter.ToType(_schema.Fields[ordinal].Type),
                 CultureInfo.InvariantCulture);
         }
 
@@ -743,18 +742,18 @@ namespace BigQueryProvider
 
         public TableSchema GetTableSchema()
         {
-            return schema;
+            return _schema;
         }
 
         void DisposeCheck()
         {
-            if (disposed)
+            if (_disposed)
                 throw new ObjectDisposedException("DataReader disposed");
         }
 
         void RangeCheck(int index)
         {
-            if (index < 0 || fieldsCount <= index)
+            if (index < 0 || _fieldsCount <= index)
                 throw new IndexOutOfRangeException($"{nameof(index)} out of range");
         }
 

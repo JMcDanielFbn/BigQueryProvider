@@ -26,11 +26,11 @@ namespace BigQueryProvider {
     /// A SQL statement to be executed against a BigQuery data source.
     /// </summary>
     public class BigQueryCommand : DbCommand, ICloneable {
-        const int defaultTimeout = 30;
+        private const int DefaultTimeout = 30;
 
-        readonly BigQueryParameterCollection bigQueryParameterCollection = new BigQueryParameterCollection();
-        CommandType commandType;
-        int commandTimeout;
+        private  readonly BigQueryParameterCollection _bigQueryParameterCollection = new BigQueryParameterCollection();
+        private CommandType _commandType;
+        private int _commandTimeout;
 
         /// <summary>
         /// Initializes a new instance of the BigQueryCommand class with the specified prototype.
@@ -38,8 +38,8 @@ namespace BigQueryProvider {
         /// <param name="command">A BigQueryCommand object to clone. </param>
         public BigQueryCommand(BigQueryCommand command)
             : this(command.CommandText, command.Connection) {
-            commandType = command.CommandType;
-            commandTimeout = command.commandTimeout;
+            _commandType = command.CommandType;
+            _commandTimeout = command._commandTimeout;
             foreach(BigQueryParameter bigQueryParameter in command.Parameters) {
                 Parameters.Add(bigQueryParameter.Clone());
             }
@@ -83,13 +83,13 @@ namespace BigQueryProvider {
         /// <value>
         /// The amount of time in seconds. The default value is 30.
         /// </value>
-        [DefaultValue(defaultTimeout)]
+        [DefaultValue(DefaultTimeout)]
         public override int CommandTimeout {
-            get => commandTimeout;
+            get => _commandTimeout;
             set {
                 if(value < 0)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "CommandTimeout can't be less than zero");
-                commandTimeout = value;
+                _commandTimeout = value;
             }
         }
 
@@ -101,11 +101,11 @@ namespace BigQueryProvider {
         /// </value>
         [DefaultValue(CommandType.Text)]
         public override CommandType CommandType {
-            get => commandType;
+            get => _commandType;
             set {
                 if(value == CommandType.StoredProcedure)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "BigQuery does not support stored procedures");
-                commandType = value;
+                _commandType = value;
             }
         }
 
@@ -223,7 +223,7 @@ namespace BigQueryProvider {
             set => Connection = (BigQueryConnection)value;
         }
 
-        protected override DbParameterCollection DbParameterCollection => bigQueryParameterCollection;
+        protected override DbParameterCollection DbParameterCollection => _bigQueryParameterCollection;
 
         protected override DbTransaction DbTransaction { get; set; }
 
